@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 export default function useTimer() {
   const [startTime, setStartTime] = useState(Date.now()); //state untuk menyimpan detik yang sudah berlalu
   const [currentTime, setCurrentTime] = useState(Date.now()); //state untuk menyimpan waktu saat ini
-   const [isRunning, setIsRunning] = useState(true); //true agar timer langsung berjalan ketika screen dibuka
+  const [isRunning, setIsRunning] = useState(true); //true agar timer langsung berjalan ketika screen dibuka
 
 useEffect(() => {
   let interval //variabel untuk menyimpan interval timer

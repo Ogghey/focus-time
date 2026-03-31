@@ -5,20 +5,13 @@ import { spacing } from '../theme/spacing';
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { FocusContext } from '../context/FocusContext';
 import { useContext, useState } from 'react';
+import { formatTime } from '../utils/timeUtils';
 
 const {width} = Dimensions.get('window');
 
 export default function FocusScreen({ route, navigation }) {
   const {subject} = route.params;
   const {seconds, isRunning, toggleTimer, startTime} = useTimer();
-
-  const formatTime = () => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-
   const { addSession } = useContext(FocusContext);
 
   return (
