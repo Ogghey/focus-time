@@ -23,6 +23,7 @@ useEffect(() => {
   const seconds = Math.floor((currentTime - startTime) / 1000);
 
 
+
   // fungsi toggle
   const toggleTimer = () => {
     setIsRunning(prev => !prev);}

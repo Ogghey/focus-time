@@ -16,9 +16,9 @@ export default function HomeStack() {
           contentStyle: { backgroundColor: colors.background },
           headerShadowVisible: false,
         }}>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerTitle: "Today" , headerTitleAlign: 'left', headerShown: false}}/>
-            <Stack.Screen name="Focus" component={FocusScreen} options={{ title: "Focus", headerShown: false }}/>
-            <Stack.Screen name="History" component={HistoryScreen} options={{  headerTitle: "History" , headerTitleAlign: 'left', headerShown: false }}/>
+            <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerTitle: "Today" , headerTitleAlign: 'left', headerShown: false}}/>
+            <Stack.Screen name="FocusScreen" component={FocusScreen} options={{ title: "Focus", headerShown: false }}/>
+            <Stack.Screen name="HistoryScreen" component={HistoryScreen} options={{  headerTitle: "History" , headerTitleAlign: 'left', headerShown: false }}/>
       </Stack.Navigator>
   );
 }

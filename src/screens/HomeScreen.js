@@ -67,7 +67,7 @@ export default function HomeScreen({navigation, route}) {
           style={[styles.startButton, !selectedSubject && styles.disabledButton]}
           disabled={!selectedSubject}
           onPress={() =>
-            navigation.navigate("Focus", {
+            navigation.navigate("FocusScreen", {
               subject: selectedSubject
             })
           }>
