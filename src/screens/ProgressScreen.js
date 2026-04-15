@@ -5,8 +5,8 @@ import { FocusContext } from '../context/FocusContext';
 import { useContext, useState } from 'react';
 import { formatTime } from '../utils/timeUtils';
 import { StackedBarChart } from 'react-native-chart-kit';
-import { Svg, Path, G, Text as SvgText } from 'react-native-svg';
-import { useRef } from 'react';
+import { Svg, Path, G, Text as SvgText, TSpan } from 'react-native-svg';
+
 
 
 
@@ -75,18 +75,56 @@ export default function ProgressScreen() {
     });
 
     //StackedBarChart
-    const subjects = [...new Set(sessions.map(s => s.subject))];
+    // 🔥 ambil subject hanya dari data yang difilter
+    const subjects = [...new Set(filteredSessions.map(s => s.subject))];
 
+    // 🔥 deklarasi di luar supaya bisa dipakai di bawah
     let labels = [];
+    let last7Days = []; // penting!
+
     if (filter === 'week') {
-        labels = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+        // ambil tanggal hari ini
+        const today = new Date();
+
+        // 🔥 buat array 7 hari terakhir
+        // contoh: [6 hari lalu ... hari ini]
+        last7Days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+
+            // mundur dari hari ini
+            d.setDate(today.getDate() - (6 - i));
+
+            return d;
+        });
+
+        // 🔥 label jadi nama hari (Sen, Sel, dst)
+        labels = last7Days.map(d =>
+            d.toLocaleDateString("id-ID", { weekday: "short" })
+        );
+
     } else if (filter === 'month') {
-        const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-        labels = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+
+        // ambil jumlah hari dalam bulan ini
+        const daysInMonth = new Date(
+            new Date().getFullYear(),
+            new Date().getMonth() + 1,
+            0
+        ).getDate();
+
+        // label: 1, 2, 3, ..., 30
+        labels = Array.from({ length: daysInMonth }, (_, i) =>
+            (i + 1).toString()
+        );
+
     } else if (filter === 'year') {
-        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+        // label bulan
+        labels = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+            'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+        ];
     }
-    
     //struktur data untuk chart
 
     const data = labels.map(() =>
@@ -97,18 +135,27 @@ export default function ProgressScreen() {
     filteredSessions.forEach(session => {
 
         const date = new Date(session.startTime);
-        let Index; // posisi di sumbu x (labels) 
+        let Index;
+
         if (filter === 'week') {
-            Index = date.getDay(); // 0-6 (Minggu-Sabtu)
+
+            // 🔥 cari index berdasarkan 7 hari terakhir
+            Index = last7Days.findIndex((d) =>
+                d.toDateString() === date.toDateString()
+            );
+
         } else if (filter === 'month') {
-            Index = date.getDate() - 1; // 0-based index untuk tanggal
+            Index = date.getDate() - 1;
+
         } else if (filter === 'year') {
-            Index = date.getMonth(); // 0-11 (Jan-Des)
+            Index = date.getMonth();
         }
 
-        const subjectIndex = subjects.indexOf(session.subject); // posisi di sumbu y (legend)
-        if (Index !== undefined && subjectIndex !== -1) {
-            data[Index][subjectIndex] += Math.floor(session.duration / 60); // konversi ke jam
+        const subjectIndex = subjects.indexOf(session.subject);
+
+        // 🔥 validasi biar tidak error / numpuk
+        if (Index !== -1 && subjectIndex !== -1) {
+            data[Index][subjectIndex] += Math.floor(session.duration / 60);
         }
     });
 
@@ -139,10 +186,10 @@ const renderPieChart = () => {
     
     if (totalValue === 0) return null;
     
-    let currentAngle = 0;
-    const size = 320;
+    let currentAngle = 10;
+    const size = 335;
     const center = size / 2;
-    const radius = 90;
+    const radius = 100;
     
     const slices = [];
     const labels = [];
@@ -177,7 +224,7 @@ const renderPieChart = () => {
         const edgeY = center + radius * Math.sin(midRad);
         
         // Titik di luar (untuk label)
-        const labelRadius = radius + 30;
+        const labelRadius = radius + 10;
         const labelX = center + labelRadius * Math.cos(midRad);
         const labelY = center + labelRadius * Math.sin(midRad);
         
@@ -191,17 +238,24 @@ const renderPieChart = () => {
         
         labels.push(
             <G key={`label-${subject}`}>
-                <Path d={connector} stroke={colors.textSecondary} strokeWidth={1} />
-                <SvgText
-                    x={textX}
-                    y={labelY}
-                    fill={colors.textPrimary}
-                    fontSize="11"
-                    textAnchor={textAnchor}
-                    alignmentBaseline="middle"
-                >
-                    {subject}
-                </SvgText>
+                <Path d={connector} stroke={colors.textSecondary} strokeWidth={2} />
+<SvgText
+    x={textX}
+    y={labelY}
+    fill={colors.textPrimary}
+    fontSize="11"
+    textAnchor={textAnchor}
+>
+    {subject.split(" ").map((word, index) => (
+        <TSpan
+            key={index}
+            x={textX}
+            dy={index === 0 ? 0 : 12} // jarak antar baris
+        >
+            {word}
+        </TSpan>
+    ))}
+</SvgText>
             </G>
         );
         
@@ -417,7 +471,7 @@ pieChartContainer: {
     marginVertical: spacing.md,
     backgroundColor: colors.card,
     padding: spacing.md,
-    borderRadius: 12,
+    borderRadius: 50,
     width: '100%',
     minHeight: 350, // Tambahkan tinggi minimum
     },
