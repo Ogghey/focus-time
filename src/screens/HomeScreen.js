@@ -6,10 +6,10 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Pressable, TouchableWithoutFeedback
+  Pressable, TouchableWithoutFeedback, Image
 } from 'react-native';
-
-import { useState, useContext, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useState, useContext, useEffect,  useCallback, useRef } from 'react';
 import SubjectChip from '../components/SubjectChip';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -35,6 +35,19 @@ export default function HomeScreen({ navigation }) {
   const [editingName, setEditingName] = useState("");
   const [editingColor, setEditingColor] = useState("#7C5CFF");
   const [activeSubject, setActiveSubject] = useState(null);
+
+      // Gunakan useFocusEffect untuk load data hanya saat screen difokuskan
+    useFocusEffect(
+        useCallback(() => {
+            // Data sudah di-load dari context, tidak perlu reload berat
+            // Hanya update jika perlu
+            return () => {
+                // Cleanup jika diperlukan
+            };
+        }, [])
+    );
+
+    
   const COLOR_OPTIONS = [
     "#7C5CFF",
     "#FF6B6B",
@@ -222,7 +235,10 @@ const deleteSubject = (id) => {
           <Text style={styles.title}>Focus Mode</Text>
         </View>
         <View style={styles.profileIcon}>
-          <Icon name="timer" size={40} color={colors.textPrimary} />
+          <Image 
+            source={require('../assets/icon/Logo_TimeTracker.png')} 
+            style={{ width: 50, height: 50, borderRadius: 30 }} 
+          />
         </View>
       </View>
 

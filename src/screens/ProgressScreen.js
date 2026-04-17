@@ -3,23 +3,17 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { FocusContext } from '../context/FocusContext';
 import { useContext, useState } from 'react';
-import { formatTime } from '../utils/timeUtils';
 import { StackedBarChart } from 'react-native-chart-kit';
 import { Svg, Path, G, Text as SvgText, TSpan } from 'react-native-svg';
-
-
-
-
 
 export default function ProgressScreen() {
 
     const { sessions, subjects: subjectList } = useContext(FocusContext);
-    const  [filter, setFilter] = useState('week');
+    const [filter, setFilter] = useState('week');
     const screenWidth = Dimensions.get('window').width;
 
     const now = new Date();
     const filterSessions = () => {
-
         return sessions.filter(session => {
             const date = new Date(session.startTime);
             if (filter === 'week') {
@@ -31,29 +25,19 @@ export default function ProgressScreen() {
             } else if (filter === 'year') {
                 return date.getFullYear() === now.getFullYear();
             }
+            return true;
         });
     };
     
     const filteredSessions = filterSessions();
 
-
-    // ambil object subject berdasarkan id
-    const getSubjectById = (id) => {
-        if (!subjectList) return null;
-        return subjectList.find(s => s.id === id);
+    // Format waktu
+    const formatTime = (seconds) => {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
-
-        const getSubjectColor = (id) => {
-        const found = subjectList.find(s => s.id === id);
-        return found ? found.color : "#888";
-    };
-
-    const getSubjectName = (id) => {
-        const found = subjectList.find(s => s.id === id);
-        return found ? found.name : "Unknown";
-    };
-
-        
 
     if (!sessions || sessions.length === 0) {
         return (
@@ -63,252 +47,218 @@ export default function ProgressScreen() {
             </View>
         );
     }
-        //FORMAT TIME
-    const formatTime = (seconds) => {
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-    };
-
-    //totAL WAKTU
-    const totalTime = filteredSessions.reduce((acc,cur) => {
+    // Total waktu dari sesi yang difilter
+    const totalTime = filteredSessions.reduce((acc, cur) => {
         return acc + cur.duration;
     }, 0);
 
-
-    //aggregasi (pengelompokan dan penjumlahan) waktu berdasarkan subject
+    // 🔥 PERUBAHAN PENTING: Gunakan data dari session, bukan dari subjectList
+    // Aggregasi waktu berdasarkan subject (pakai nama sebagai key)
     const subjectTotals = {};
-    filteredSessions.forEach(s => {
-        //jika subject belum ada di object, buat dengan nilai awal 0
-        if (!subjectTotals[s.subjectId]) {
-            subjectTotals[s.subjectId] = 0;
+    filteredSessions.forEach(session => {
+        const subjectName = session.subjectName;
+        if (!subjectTotals[subjectName]) {
+            subjectTotals[subjectName] = {
+                duration: 0,
+                color: session.subjectColor,
+                name: subjectName
+            };
         }
-        subjectTotals[s.subjectId] += s.duration;
+        subjectTotals[subjectName].duration += session.duration;
     });
 
-    //StackedBarChart
-    // 🔥 ambil subject hanya dari data yang difilter
-    const subjects = [...new Set(filteredSessions.map(s => s.subjectId))].map(id => getSubjectById(id)?.name || "Unknown");
-
-    // 🔥 deklarasi di luar supaya bisa dipakai di bawah
+    // 🔥 StackedBarChart configuration
     let labels = [];
-    let last7Days = []; // penting!
+    let last7Days = [];
 
     if (filter === 'week') {
-
-        // ambil tanggal hari ini
         const today = new Date();
-
-        // 🔥 buat array 7 hari terakhir
-        // contoh: [6 hari lalu ... hari ini]
         last7Days = Array.from({ length: 7 }, (_, i) => {
             const d = new Date();
-
-            // mundur dari hari ini
             d.setDate(today.getDate() - (6 - i));
-
             return d;
         });
-
-        // 🔥 label jadi nama hari (Sen, Sel, dst)
         labels = last7Days.map(d =>
             d.toLocaleDateString("id-ID", { weekday: "short" })
         );
-
     } else if (filter === 'month') {
-
-        // ambil jumlah hari dalam bulan ini
         const daysInMonth = new Date(
             new Date().getFullYear(),
             new Date().getMonth() + 1,
             0
         ).getDate();
-
-        // label: 1, 2, 3, ..., 30
         labels = Array.from({ length: daysInMonth }, (_, i) =>
             (i + 1).toString()
         );
-
     } else if (filter === 'year') {
-
-        // label bulan
         labels = [
             'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
             'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
         ];
     }
-    //struktur data untuk chart
 
-    const data = labels.map(() =>
-        subjects.map(() => 0)
-    );
+    // 🔥 Ambil daftar subject dari subjectTotals (nama-nama subject)
+    const subjects = Object.keys(subjectTotals);
 
-    //filter sesi berdasarkan rentang waktu
+    // 🔥 Siapkan data untuk chart
+    const data = labels.map(() => subjects.map(() => 0));
+
+    // Isi data chart dari sessions yang difilter
     filteredSessions.forEach(session => {
-
         const date = new Date(session.startTime);
-        let Index;
+        let index;
 
         if (filter === 'week') {
-
-            // 🔥 cari index berdasarkan 7 hari terakhir
-            Index = last7Days.findIndex((d) =>
+            index = last7Days.findIndex((d) =>
                 d.toDateString() === date.toDateString()
             );
-
         } else if (filter === 'month') {
-            Index = date.getDate() - 1;
-
+            index = date.getDate() - 1;
         } else if (filter === 'year') {
-            Index = date.getMonth();
+            index = date.getMonth();
         }
 
-        const subjectIndex = subjects.indexOf(session.subjectId);
+        const subjectIndex = subjects.indexOf(session.subjectName);
 
-        // 🔥 validasi biar tidak error / numpuk
-        if (Index !== -1 && subjectIndex !== -1) {
-            data[Index][subjectIndex] += Math.floor(session.duration / 60);
+        if (index !== -1 && subjectIndex !== -1) {
+            data[index][subjectIndex] += Math.floor(session.duration / 60);
         }
     });
 
-    const chartWidth = Math.max(labels.length*50, screenWidth)
+    const chartWidth = Math.max(labels.length * 50, screenWidth);
 
-    
-
-
-    
-    // Render Pie Chart manual dengan SVG
-const renderPieChart = () => {
-    const values = Object.values(subjectTotals);
-    const totalValue = values.reduce((a, b) => a + b, 0);
-    
-    if (totalValue === 0) return null;
-    
-    let currentAngle = 10;
-    const size = 335;
-    const center = size / 2;
-    const radius = 100;
-    
-    const slices = [];
-    const labels = [];
-    
-    Object.keys(subjectTotals).forEach((subject, idx) => {
-        const value = subjectTotals[subject];
-        const angle = (value / totalValue) * 360;
-        const startAngle = currentAngle;
-        const endAngle = currentAngle + angle;
+    // 🔥 Render Pie Chart manual dengan SVG (sudah diperbaiki)
+    const renderPieChart = () => {
+        const subjectEntries = Object.entries(subjectTotals);
+        const totalValue = subjectEntries.reduce((a, [, b]) => a + b.duration, 0);
         
-        const startRad = (startAngle * Math.PI) / 180;
-        const endRad = (endAngle * Math.PI) / 180;
+        if (totalValue === 0) return null;
         
-        const x1 = center + radius * Math.cos(startRad);
-        const y1 = center + radius * Math.sin(startRad);
-        const x2 = center + radius * Math.cos(endRad);
-        const y2 = center + radius * Math.sin(endRad);
+        let currentAngle = 10;
+        const size = 335;
+        const center = size / 2;
+        const radius = 100;
         
-        const largeArc = angle > 180 ? 1 : 0;
+        const slices = [];
+        const labels_pie = [];
         
-        const d = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        subjectEntries.forEach(([subjectName, data]) => {
+            const value = data.duration;
+            const color = data.color;
+            const angle = (value / totalValue) * 360;
+            const startAngle = currentAngle;
+            const endAngle = currentAngle + angle;
+            
+            const startRad = (startAngle * Math.PI) / 180;
+            const endRad = (endAngle * Math.PI) / 180;
+            
+            const x1 = center + radius * Math.cos(startRad);
+            const y1 = center + radius * Math.sin(startRad);
+            const x2 = center + radius * Math.cos(endRad);
+            const y2 = center + radius * Math.sin(endRad);
+            
+            const largeArc = angle > 180 ? 1 : 0;
+            
+            const d = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+            
+            slices.push(
+                <Path key={subjectName} d={d} fill={color} stroke={colors.background} strokeWidth={2} />
+            );
+            
+            const midAngle = startAngle + angle / 2;
+            const midRad = (midAngle * Math.PI) / 180;
+            
+            const edgeX = center + radius * Math.cos(midRad);
+            const edgeY = center + radius * Math.sin(midRad);
+            
+            const labelRadius = radius + 10;
+            const labelX = center + labelRadius * Math.cos(midRad);
+            const labelY = center + labelRadius * Math.sin(midRad);
+            
+            const connector = `M ${edgeX} ${edgeY} L ${labelX} ${labelY}`;
+            
+            const isLeft = midAngle > 90 && midAngle < 270;
+            const textX = labelX + (isLeft ? -5 : 5);
+            const textAnchor = isLeft ? "end" : "start";
+            
+            labels_pie.push(
+                <G key={`label-${subjectName}`}>
+                    <Path d={connector} stroke={colors.textSecondary} strokeWidth={2} />
+                    <SvgText
+                        x={textX}
+                        y={labelY}
+                        fill={colors.textPrimary}
+                        fontSize="11"
+                        textAnchor={textAnchor}
+                    >
+                        {subjectName.split(" ").map((word, index) => (
+                            <TSpan
+                                key={index}
+                                x={textX}
+                                dy={index === 0 ? 0 : 12}
+                            >
+                                {word}
+                            </TSpan>
+                        ))}
+                    </SvgText>
+                </G>
+            );
+            
+            currentAngle += angle;
+        });
         
-        slices.push(
-            <Path key={subject} d={d} fill={getSubjectColor(subject)} stroke={colors.background} strokeWidth={2} />
+        return (
+            <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                {slices}
+                {labels_pie}
+            </Svg>
         );
-        
-        const midAngle = startAngle + angle / 2;
-        const midRad = (midAngle * Math.PI) / 180;
-        
-        // Titik di tepi pie
-        const edgeX = center + radius * Math.cos(midRad);
-        const edgeY = center + radius * Math.sin(midRad);
-        
-        // Titik di luar (untuk label)
-        const labelRadius = radius + 10;
-        const labelX = center + labelRadius * Math.cos(midRad);
-        const labelY = center + labelRadius * Math.sin(midRad);
-        
-        // Garis penghubung
-        const connector = `M ${edgeX} ${edgeY} L ${labelX} ${labelY}`;
-        
-        // Posisi anchor
-        const isLeft = midAngle > 90 && midAngle < 270;
-        const textX = labelX + (isLeft ? -5 : 5);
-        const textAnchor = isLeft ? "end" : "start";
-        
-        labels.push(
-            <G key={`label-${(subject)}`}>
-                <Path d={connector} stroke={colors.textSecondary} strokeWidth={2} />
-<SvgText
-    x={textX}
-    y={labelY}
-    fill={colors.textPrimary}
-    fontSize="11"
-    textAnchor={textAnchor}
->
-    {getSubjectName(subject).split(" ").map((word, index) => (
-        <TSpan
-            key={index}
-            x={textX}
-            dy={index === 0 ? 0 : 12} // jarak antar baris
-        >
-            {word}
-        </TSpan>
-    ))}
-</SvgText>
-            </G>
-        );
-        
-        currentAngle += angle;
-    });
-    
-    return (
-        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-            {slices}
-            {labels}
-        </Svg>
-    );
-};
-    // Render legend untuk Pie Chart
+    };
+
+    // 🔥 Render legend untuk Pie Chart
     const renderPieLegend = () => {
-        return Object.keys(subjectTotals).map((subject) => (
-            <View key={subject} style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: getSubjectColor(subject) }]} />
+        return Object.entries(subjectTotals).map(([subjectName, data]) => (
+            <View key={subjectName} style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: data.color }]} />
                 <Text style={styles.legendText}>
-                    {getSubjectName(subject)}: {formatTime(subjectTotals[subject])}
+                    {subjectName}: {formatTime(data.duration)}
                 </Text>
             </View>
         ));
     };
 
-
-
-
     return (
         <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 80}}>
             <Text style={styles.title}>Progress Fokus Kamu</Text>
+            
             {/* Tombol Filter */}
             <View style={styles.filterContainer}>
                 {["week", "month", "year"].map((item) => (
-                    <Text key={item} style={[styles.filterItem, filter === item && styles.activeFilter]} onPress={() => setFilter(item)}>
+                    <Text 
+                        key={item} 
+                        style={[styles.filterItem, filter === item && styles.activeFilter]} 
+                        onPress={() => setFilter(item)}
+                    >
                         {item.charAt(0).toUpperCase() + item.slice(1)}
                     </Text>
                 ))}
-
             </View>
+
             {/* Total Waktu */}
             <View style={styles.card}>
                 <Text style={styles.label}>Total Waktu Fokus</Text>
                 <Text style={styles.value}>{formatTime(totalTime)}</Text>
             </View>
 
+            {/* Stacked Bar Chart */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingRight: 20}}>
                 <StackedBarChart
                     data={{
                         labels: labels,
-                        legend: [],
-                        data,
-                        barColors: subjects.map((subject, index) => getSubjectColor(subject)),
+                        legend: subjects,
+                        data: data,
+                        barColors: subjects.map(subjectName => subjectTotals[subjectName].color),
                     }}
                     width={chartWidth}
                     height={220}
@@ -323,39 +273,39 @@ const renderPieChart = () => {
                         backgroundGradientFrom: colors.background,
                         backgroundGradientTo: colors.background,
                         decimalPlaces: 0,
-
                         color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
                         labelColor: () => colors.textSecondary,
-
-
                     }}
                     style={{
                         borderRadius: 16,
                         marginTop: 10,
                     }}
-
                 />
             </ScrollView>
 
             {/* Total Waktu Per Subject */}
             <View>
                 <Text style={styles.sectionTitle}>Total Waktu Per Subject</Text>
-                 {Object.keys(subjectTotals).map((subject) => (
-                <View key={subject} style={styles.card}>
-                   <View style={styles.rowBetween}>
-                    <View>
-                    <Text style={styles.label}>{getSubjectName(subject)}</Text>
-                    <Text style={styles.value}>{formatTime(subjectTotals[subject])}</Text>
+                {Object.entries(subjectTotals).map(([subjectName, data]) => (
+                    <View key={subjectName} style={styles.card}>
+                        <View style={styles.rowBetween}>
+                            <View>
+                                <Text style={styles.label}>{subjectName}</Text>
+                                <Text style={styles.value}>{formatTime(data.duration)}</Text>
+                            </View>
+                            <View
+                                style={{
+                                    width: 20,
+                                    height: 20,
+                                    backgroundColor: data.color,
+                                    borderRadius: 3
+                                }}
+                            />
+                        </View>
                     </View>
-                    <View
-                    style={{
-                        width: 20, height: 20, backgroundColor: getSubjectColor(subject), borderRadius: 3
-                    }}/>
-
-                    </View>
-                 </View>
-                ))}  
+                ))}
             </View>
+
             {/* Pie Chart Distribusi */}
             <View style={styles.pieSectionContainer}>
                 <Text style={styles.sectionTitle}>Distribusi Waktu Fokus</Text>
@@ -366,11 +316,8 @@ const renderPieChart = () => {
                     {renderPieLegend()}
                 </View>
             </View>
-
         </ScrollView>
-
     );
-
 }
 
 const styles = StyleSheet.create({
@@ -392,7 +339,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginBottom: spacing.sm,
     },
-    
     label: {
         fontSize: 16,
         fontWeight: 'bold',
@@ -407,6 +353,8 @@ const styles = StyleSheet.create({
     emptyState: {
         fontSize: 16,
         color: colors.textSecondary,
+        textAlign: 'center',
+        marginTop: spacing.xl,
     },
     filterContainer: {
         flexDirection: 'row',
@@ -434,45 +382,21 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center"
-
-    },
-    sectionContainer: {
-        marginTop: spacing.lg,
-        alignItems: 'center',
-    },
-    chartContainer: {
-        alignItems: 'center',
-        marginVertical: spacing.md,
-    },
-    legendItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 4,
-    },
-    legendColor: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        marginRight: 8,
-    },
-    legendText: {
-        color: colors.textPrimary,
-        fontSize: 12,
     },
     pieSectionContainer: {
         marginTop: spacing.lg,
         alignItems: 'center',
         marginBottom: spacing.lg,
     },
-pieChartContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: spacing.md,
-    backgroundColor: colors.card,
-    padding: spacing.md,
-    borderRadius: 50,
-    width: '100%',
-    minHeight: 350, // Tambahkan tinggi minimum
+    pieChartContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: spacing.md,
+        backgroundColor: colors.card,
+        padding: spacing.md,
+        borderRadius: 50,
+        width: '100%',
+        minHeight: 350,
     },
     legendContainer: {
         marginTop: spacing.sm,
@@ -498,8 +422,4 @@ pieChartContainer: {
         fontSize: 14,
         flex: 1,
     },
-
-
-    
-
 });

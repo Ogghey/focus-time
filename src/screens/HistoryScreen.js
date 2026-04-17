@@ -19,30 +19,14 @@ export default function HistoryScreen() {
         const endDate = new Date(end);
         
         const format = (date) => 
-        `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+            `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
         return `${format(startDate)} - ${format(endDate)}`;
     };
 
-
-
-    //render tiap item sesi fokus
-    const renderItem = ({ item }) => (
-    <>
-        <Text style={styles.subject}>{item.subjectName}</Text>
-        <Text style={styles.duration}>
-        {formatDuration(item.duration)}
-        </Text>
-        <Text style={styles.time}>
-        {formatTimeRange(item.startTime, item.endTime)}
-        </Text>
-    </>
-    );
-
-    //format hari
+    // Format hari
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         const today = new Date();
-
         const yesterday = new Date();
         yesterday.setDate(today.getDate() - 1);
 
@@ -53,16 +37,25 @@ export default function HistoryScreen() {
             return "Yesterday";
         }
 
-        return date.toDateString();
-};
+        return date.toLocaleDateString('id-ID', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+    };
 
-// Kelompokkan sesi berdasarkan tanggal
-    const grupByDate = () => {
+    // Kelompokkan sesi berdasarkan tanggal
+    const groupByDate = () => {
         const grouped = {};
+        
+        // 🔥 Urutkan sessions dari yang terbaru ke terlama
+        const sortedSessions = [...sessions].sort((a, b) => 
+            new Date(b.startTime) - new Date(a.startTime)
+        );
 
-        sessions.forEach(session => {
-            const date = new Date(session.startTime)
-
+        sortedSessions.forEach(session => {
+            const date = new Date(session.startTime);
             const key = date.toDateString();
             if (!grouped[key]) {
                 grouped[key] = [];
@@ -72,54 +65,61 @@ export default function HistoryScreen() {
         return grouped;
     };
 
-    const groupedSessions = grupByDate();
-
+    const groupedSessions = groupByDate();
     const groupedArray = Object.keys(groupedSessions).map(date => ({
         date,
         data: groupedSessions[date],
     }));
 
+    return (
+        <View style={styles.container}>
+            <Text style={styles.title}>Riwayat Fokus</Text>
 
-return (
-  <View style={styles.container}>
-    <Text style={styles.title}>Riwayat Fokus</Text>
-
-    {sessions.length === 0 ? (
-      <Text style={styles.emptyText}>
-        Belum ada sesi fokus yang tercatat.
-      </Text>
-    ) : (
-
-      <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl }} showsVerticalScrollIndicator={false}>
-
-        {groupedArray.map((group) => (
-          <View key={group.date}>
-
-            <Text style={styles.dateHeader}>
-              {formatDate(group.date)}
-            </Text>
-
-            {group.data.map((item) => (
-              <View key={item.startTime} style={styles.card}>
-                <Text style={styles.subject}>{item.subjectName}</Text>
-                <Text style={styles.duration}>
-                  {formatDuration(item.duration)}
+            {sessions.length === 0 ? (
+                <Text style={styles.emptyText}>
+                    Belum ada sesi fokus yang tercatat.
                 </Text>
-                <Text style={styles.time}>
-                  {formatTimeRange(item.startTime, item.endTime)}
-                </Text>
-              </View>
-            ))}
+            ) : (
+                <ScrollView 
+                    contentContainerStyle={{ paddingBottom: spacing.xl }} 
+                    showsVerticalScrollIndicator={false}
+                >
+                    {groupedArray.map((group) => (
+                        <View key={group.date}>
+                            <Text style={styles.dateHeader}>
+                                {formatDate(group.date)}
+                            </Text>
 
-          </View>
-        ))}
-
-      </ScrollView>
-
-    )}
-  </View>
-);
-
+                            {group.data.map((session, index) => (
+                                <View key={session.startTime + index} style={styles.card}>
+                                    {/* 🔥 Langsung pakai subjectName dari session */}
+                                    <View style={styles.subjectContainer}>
+                                        <View 
+                                            style={[
+                                                styles.subjectColor, 
+                                                { backgroundColor: session.subjectColor }
+                                            ]} 
+                                        />
+                                        <Text style={styles.subject}>
+                                            {session.subjectName || "Unknown Subject"}
+                                        </Text>
+                                    </View>
+                                    
+                                    <Text style={styles.duration}>
+                                        {formatDuration(session.duration)}
+                                    </Text>
+                                    
+                                    <Text style={styles.time}>
+                                        {formatTimeRange(session.startTime, session.endTime)}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+                    ))}
+                </ScrollView>
+            )}
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({
@@ -140,22 +140,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: spacing.xl,
     },
-    subject: {
-        color: colors.textPrimary,
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: spacing.sm,
-    },
-    duration: {
-        color: colors.textSecondary,
-        fontSize: 14,
-        marginBottom: spacing.xs,
-    },
-    time: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        marginTop: spacing.xs,
-    },
     dateHeader: {
         color: colors.textSecondary,
         fontSize: 16,
@@ -173,7 +157,33 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
-  
     },
-
+    subjectContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+    },
+    subjectColor: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        marginRight: spacing.sm,
+    },
+    subject: {
+        color: colors.textPrimary,
+        fontSize: 18,
+        fontWeight: '600',
+        flex: 1,
+    },
+    duration: {
+        color: colors.primary,
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: spacing.xs,
+    },
+    time: {
+        color: colors.textSecondary,
+        fontSize: 12,
+        marginTop: spacing.xs,
+    },
 });

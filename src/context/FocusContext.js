@@ -4,8 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const FocusContext = createContext();
 
 export function FocusProvider({ children }) {
-
-
     const [sessions, setSessions] = useState([]);
     const [subjects, setSubjects] = useState([]);
 
@@ -13,7 +11,6 @@ export function FocusProvider({ children }) {
     useEffect(() => {
         loadSession();
         loadSubjects();
-
     }, []);
 
     const loadSession = async () => {
@@ -22,7 +19,7 @@ export function FocusProvider({ children }) {
             if (data) {
                 setSessions(JSON.parse(data));
             } else {
-                setSessions([]); // Set sessions ke array kosong jika tidak ada data yang tersimpan
+                setSessions([]);
             }
         } catch (error) {
             console.error('Error loading session:', error);
@@ -30,31 +27,30 @@ export function FocusProvider({ children }) {
     };
 
     const loadSubjects = async () => {
-    try {
-        const data = await AsyncStorage.getItem('subjects');
-        if (data) {
-            setSubjects(JSON.parse(data));
-        } else {
-            setSubjects([]);
+        try {
+            const data = await AsyncStorage.getItem('subjects');
+            if (data) {
+                setSubjects(JSON.parse(data));
+            } else {
+                setSubjects([]);
+            }
+        } catch (error) {
+            console.error('Error loading subjects:', error);
         }
-    } catch (error) {
-        console.error('Error loading subjects:', error);
-    }
-};  
+    };  
 
     const saveSubjects = async (data) => {
-    try {
-        setSubjects(data);
-        await AsyncStorage.setItem('subjects', JSON.stringify(data));
-    } catch (error) {
-        console.error('Error saving subjects:', error);
-    }
-};
+        try {
+            setSubjects(data);
+            await AsyncStorage.setItem('subjects', JSON.stringify(data));
+        } catch (error) {
+            console.error('Error saving subjects:', error);
+        }
+    };
 
     const addSession = async (session) => {
         try {
             const updated = [...sessions, session];
-
             setSessions(updated);
             await AsyncStorage.setItem('sessions', JSON.stringify(updated));
         } catch (error) {
@@ -62,11 +58,15 @@ export function FocusProvider({ children }) {
         }
     };
 
-
     return (
-        <FocusContext.Provider value={{ sessions, addSession, subjects, saveSubjects }}>
+        <FocusContext.Provider value={{ 
+            sessions, 
+            setSessions, // 🔥 Tambahkan ini
+            addSession, 
+            subjects, 
+            saveSubjects 
+        }}>
             {children}
         </FocusContext.Provider>
     );
 }
-
