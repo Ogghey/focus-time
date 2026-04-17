@@ -25,7 +25,7 @@ export default function FocusScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.timerCard}>
-        <Text style={styles.subject}>{subject}</Text>
+        <Text style={styles.subject}>{subject.name}</Text>
         <View style={styles.timerWrapper}>
           <Text style={styles.timer}>{formatTime(seconds)}</Text>
         </View>
@@ -50,9 +50,13 @@ export default function FocusScreen({ route, navigation }) {
             onPress={() => {
               const endTime = Date.now();
 
-              const duration = Math.floor((endTime - startTime) / 1000);
+              const duration = startTime
+            ? Math.floor((endTime - startTime) / 1000)
+            : seconds;
               const session = {
-                subject,
+                subjectId: subject.id,
+                subjectName: subject.name,
+                subjectColor: subject.color,
                 duration,
                 startTime,
                 endTime,

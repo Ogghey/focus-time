@@ -13,7 +13,7 @@ import { Svg, Path, G, Text as SvgText, TSpan } from 'react-native-svg';
 
 export default function ProgressScreen() {
 
-    const { sessions } = useContext(FocusContext);
+    const { sessions, subjects: subjectList } = useContext(FocusContext);
     const  [filter, setFilter] = useState('week');
     const screenWidth = Dimensions.get('window').width;
 
@@ -37,6 +37,21 @@ export default function ProgressScreen() {
     const filteredSessions = filterSessions();
 
 
+    // ambil object subject berdasarkan id
+    const getSubjectById = (id) => {
+        if (!subjectList) return null;
+        return subjectList.find(s => s.id === id);
+    };
+
+        const getSubjectColor = (id) => {
+        const found = subjectList.find(s => s.id === id);
+        return found ? found.color : "#888";
+    };
+
+    const getSubjectName = (id) => {
+        const found = subjectList.find(s => s.id === id);
+        return found ? found.name : "Unknown";
+    };
 
         
 
@@ -63,20 +78,19 @@ export default function ProgressScreen() {
     }, 0);
 
 
-
     //aggregasi (pengelompokan dan penjumlahan) waktu berdasarkan subject
     const subjectTotals = {};
     filteredSessions.forEach(s => {
         //jika subject belum ada di object, buat dengan nilai awal 0
-        if (!subjectTotals[s.subject]) {
-            subjectTotals[s.subject] = 0;
+        if (!subjectTotals[s.subjectId]) {
+            subjectTotals[s.subjectId] = 0;
         }
-        subjectTotals[s.subject] += s.duration;
+        subjectTotals[s.subjectId] += s.duration;
     });
 
     //StackedBarChart
     // 🔥 ambil subject hanya dari data yang difilter
-    const subjects = [...new Set(filteredSessions.map(s => s.subject))];
+    const subjects = [...new Set(filteredSessions.map(s => s.subjectId))].map(id => getSubjectById(id)?.name || "Unknown");
 
     // 🔥 deklarasi di luar supaya bisa dipakai di bawah
     let labels = [];
@@ -151,7 +165,7 @@ export default function ProgressScreen() {
             Index = date.getMonth();
         }
 
-        const subjectIndex = subjects.indexOf(session.subject);
+        const subjectIndex = subjects.indexOf(session.subjectId);
 
         // 🔥 validasi biar tidak error / numpuk
         if (Index !== -1 && subjectIndex !== -1) {
@@ -163,22 +177,8 @@ export default function ProgressScreen() {
 
     
 
-    // ubah string ke angka (hash)
-    const stringToColor = (str) => {
-        let hash = 0
-        //loop tiap karakter
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        let color = '#'
 
-        for (let i = 0; i < 3; i++) {
-            const value = (hash >> (i*8)) & 255;
-
-            color += ("00" + value.toString(16)).slice(-2);
-        }
-        return color
-    }
+    
     // Render Pie Chart manual dengan SVG
 const renderPieChart = () => {
     const values = Object.values(subjectTotals);
@@ -213,7 +213,7 @@ const renderPieChart = () => {
         const d = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
         
         slices.push(
-            <Path key={subject} d={d} fill={stringToColor(subject)} stroke={colors.background} strokeWidth={2} />
+            <Path key={subject} d={d} fill={getSubjectColor(subject)} stroke={colors.background} strokeWidth={2} />
         );
         
         const midAngle = startAngle + angle / 2;
@@ -237,7 +237,7 @@ const renderPieChart = () => {
         const textAnchor = isLeft ? "end" : "start";
         
         labels.push(
-            <G key={`label-${subject}`}>
+            <G key={`label-${(subject)}`}>
                 <Path d={connector} stroke={colors.textSecondary} strokeWidth={2} />
 <SvgText
     x={textX}
@@ -246,7 +246,7 @@ const renderPieChart = () => {
     fontSize="11"
     textAnchor={textAnchor}
 >
-    {subject.split(" ").map((word, index) => (
+    {getSubjectName(subject).split(" ").map((word, index) => (
         <TSpan
             key={index}
             x={textX}
@@ -273,9 +273,9 @@ const renderPieChart = () => {
     const renderPieLegend = () => {
         return Object.keys(subjectTotals).map((subject) => (
             <View key={subject} style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: stringToColor(subject) }]} />
+                <View style={[styles.legendColor, { backgroundColor: getSubjectColor(subject) }]} />
                 <Text style={styles.legendText}>
-                    {subject}: {formatTime(subjectTotals[subject])}
+                    {getSubjectName(subject)}: {formatTime(subjectTotals[subject])}
                 </Text>
             </View>
         ));
@@ -308,7 +308,7 @@ const renderPieChart = () => {
                         labels: labels,
                         legend: [],
                         data,
-                        barColors: subjects.map((subject, index) => stringToColor(subject)),
+                        barColors: subjects.map((subject, index) => getSubjectColor(subject)),
                     }}
                     width={chartWidth}
                     height={220}
@@ -344,13 +344,12 @@ const renderPieChart = () => {
                 <View key={subject} style={styles.card}>
                    <View style={styles.rowBetween}>
                     <View>
-                    <Text style={styles.label}>{subject}</Text>
-                    <Text style={styles.value}>{formatTime(subjectTotals[subject])}
-                    </Text>
+                    <Text style={styles.label}>{getSubjectName(subject)}</Text>
+                    <Text style={styles.value}>{formatTime(subjectTotals[subject])}</Text>
                     </View>
                     <View
                     style={{
-                        width: 20, height: 20, backgroundColor: stringToColor(subject), borderRadius: 3
+                        width: 20, height: 20, backgroundColor: getSubjectColor(subject), borderRadius: 3
                     }}/>
 
                     </View>

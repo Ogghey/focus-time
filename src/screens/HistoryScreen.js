@@ -28,7 +28,7 @@ export default function HistoryScreen() {
     //render tiap item sesi fokus
     const renderItem = ({ item }) => (
     <>
-        <Text style={styles.subject}>{item.subject}</Text>
+        <Text style={styles.subject}>{item.subjectName}</Text>
         <Text style={styles.duration}>
         {formatDuration(item.duration)}
         </Text>
@@ -101,7 +101,7 @@ return (
 
             {group.data.map((item) => (
               <View key={item.startTime} style={styles.card}>
-                <Text style={styles.subject}>{item.subject}</Text>
+                <Text style={styles.subject}>{item.subjectName}</Text>
                 <Text style={styles.duration}>
                   {formatDuration(item.duration)}
                 </Text>

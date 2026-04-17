@@ -2,11 +2,18 @@ import {TouchableOpacity, Text, StyleSheet} from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
-export default function SubjectChip({title, selected, onPress}) {
+export default function SubjectChip({title, selected, onPress, onLongPress, color}) {
     return (
         <TouchableOpacity 
-            style={[styles.chip, selected && styles.selectedChip]} 
+        style={[
+        styles.chip,
+        selected && {
+          backgroundColor: color, // 🔥 pakai warna
+          borderColor: color
+        }
+      ]}
             onPress={onPress}
+            onLongPress={onLongPress}
             activeOpacity={0.7}>
             <Text style={[styles.text, selected && styles.selectedText]}>{title}</Text>
         </TouchableOpacity>

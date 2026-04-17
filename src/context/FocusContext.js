@@ -5,11 +5,15 @@ export const FocusContext = createContext();
 
 export function FocusProvider({ children }) {
 
+
     const [sessions, setSessions] = useState([]);
+    const [subjects, setSubjects] = useState([]);
 
     //load data sebelumnya saat aplikasi dibuka, jika ada data yang tersimpan di AsyncStorage
     useEffect(() => {
         loadSession();
+        loadSubjects();
+
     }, []);
 
     const loadSession = async () => {
@@ -25,6 +29,28 @@ export function FocusProvider({ children }) {
         }
     };
 
+    const loadSubjects = async () => {
+    try {
+        const data = await AsyncStorage.getItem('subjects');
+        if (data) {
+            setSubjects(JSON.parse(data));
+        } else {
+            setSubjects([]);
+        }
+    } catch (error) {
+        console.error('Error loading subjects:', error);
+    }
+};  
+
+    const saveSubjects = async (data) => {
+    try {
+        setSubjects(data);
+        await AsyncStorage.setItem('subjects', JSON.stringify(data));
+    } catch (error) {
+        console.error('Error saving subjects:', error);
+    }
+};
+
     const addSession = async (session) => {
         try {
             const updated = [...sessions, session];
@@ -38,7 +64,7 @@ export function FocusProvider({ children }) {
 
 
     return (
-        <FocusContext.Provider value={{ sessions, addSession }}>
+        <FocusContext.Provider value={{ sessions, addSession, subjects, saveSubjects }}>
             {children}
         </FocusContext.Provider>
     );
