@@ -234,12 +234,6 @@ const deleteSubject = (id) => {
           <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.title}>Focus Mode</Text>
         </View>
-        <View style={styles.profileIcon}>
-          <Image 
-            source={require('../assets/icon/Logo_TimeTracker.png')} 
-            style={{ width: 50, height: 50, borderRadius: 30 }} 
-          />
-        </View>
       </View>
 
       {/* STATS CARD */}
